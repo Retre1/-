@@ -1,0 +1,77 @@
+{
+  "data": {
+    "symbols": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF"],
+    "timeframes": ["H1"],
+    "start_date": "2020-01-01",
+    "end_date": "2024-01-01",
+    "test_size": 0.2,
+    "validation_size": 0.2
+  },
+  "features": {
+    "technical_indicators": true,
+    "price_features": true,
+    "volume_features": true,
+    "lag_features": [1, 2, 3, 5, 10, 20],
+    "rolling_features": [5, 10, 20, 50, 100]
+  },
+  "models": {
+    "xgboost": {
+      "enabled": true,
+      "optimize": true,
+      "trials": 100,
+      "base_params": {
+        "n_estimators": 500,
+        "max_depth": 6,
+        "learning_rate": 0.01,
+        "random_state": 42
+      }
+    },
+    "lightgbm": {
+      "enabled": true,
+      "optimize": true,
+      "trials": 100,
+      "base_params": {
+        "objective": "regression",
+        "metric": "mse",
+        "verbosity": -1,
+        "random_state": 42
+      }
+    },
+    "lstm": {
+      "enabled": true,
+      "optimize": true,
+      "trials": 50,
+      "sequence_length": 60,
+      "epochs": 100,
+      "base_params": {
+        "units_1": 64,
+        "units_2": 32,
+        "dropout": 0.2,
+        "learning_rate": 0.001
+      }
+    },
+    "ensemble": {
+      "enabled": true,
+      "optimize_weights": true,
+      "base_weights": {
+        "xgboost": 0.4,
+        "lightgbm": 0.3,
+        "lstm": 0.3
+      }
+    }
+  },
+  "training": {
+    "cv_folds": 5,
+    "early_stopping": true,
+    "save_models": true,
+    "plot_results": true,
+    "gpu_memory_limit": 4096,
+    "batch_size": 32,
+    "validation_patience": 15
+  },
+  "optimization": {
+    "optuna_storage": "sqlite:///optuna_study.db",
+    "n_jobs": -1,
+    "study_name": "forex_model_optimization"
+  }
+}
