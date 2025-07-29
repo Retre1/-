@@ -1,0 +1,129 @@
+{
+  "mt5": {
+    "server": "YourBroker-Server",
+    "login": 0,
+    "password": "",
+    "timeout": 5000,
+    "symbols": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF", "NZDUSD", "USDCAD"]
+  },
+  "ai": {
+    "models": ["lstm", "xgboost", "lightgbm"],
+    "timeframes": ["M15", "H1", "H4"],
+    "lookback_periods": [50, 100, 200],
+    "retrain_interval": 24,
+    "min_accuracy_threshold": 0.65,
+    "ensemble_weights": {
+      "lstm": 0.4,
+      "xgboost": 0.3,
+      "lightgbm": 0.3
+    }
+  },
+  "strategies": {
+    "trend_following": {
+      "enabled": true,
+      "weight": 0.4,
+      "min_trend_strength": 0.7,
+      "lookback_periods": [20, 50, 200]
+    },
+    "mean_reversion": {
+      "enabled": true,
+      "weight": 0.3,
+      "rsi_oversold": 30,
+      "rsi_overbought": 70,
+      "bollinger_factor": 2.0
+    },
+    "breakout": {
+      "enabled": true,
+      "weight": 0.3,
+      "breakout_threshold": 0.02,
+      "volume_confirmation": true
+    }
+  },
+  "risk": {
+    "max_risk_per_trade": 0.02,
+    "max_daily_loss": 0.05,
+    "max_concurrent_trades": 5,
+    "stop_loss_pips": 50,
+    "take_profit_pips": 100,
+    "trailing_stop_pips": 30,
+    "max_spread": 3.0,
+    "min_margin_level": 200,
+    "position_sizing_method": "fixed_risk"
+  },
+  "solana": {
+    "rpc_endpoint": "https://api.mainnet-beta.solana.com",
+    "token_address": "",
+    "burn_percentage": 0.1,
+    "min_profit_for_burn": 100,
+    "burn_schedule": "monthly",
+    "token_name": "ForexBot Token",
+    "token_symbol": "FBT",
+    "initial_supply": 1000000
+  },
+  "notifications": {
+    "telegram": {
+      "enabled": false,
+      "bot_token": "",
+      "chat_id": ""
+    },
+    "email": {
+      "enabled": false,
+      "smtp_server": "",
+      "smtp_port": 587,
+      "username": "",
+      "password": "",
+      "recipient": ""
+    },
+    "webhook": {
+      "enabled": false,
+      "url": "",
+      "events": ["trade_opened", "trade_closed", "token_burn", "error"]
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "file_path": "data/logs/forexbot.log",
+    "max_file_size": "10MB",
+    "backup_count": 5,
+    "format": "{time:YYYY-MM-DD HH:mm:ss} | {level} | {module} | {message}"
+  },
+  "database": {
+    "url": "postgresql://username:password@localhost:5432/forexbot",
+    "backup_interval": 24,
+    "retention_days": 365
+  },
+  "web_interface": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "cors_origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
+    "secret_key": "your-secret-key-here",
+    "session_expire": 3600
+  },
+  "trading_schedule": {
+    "enabled": true,
+    "timezone": "UTC",
+    "trading_hours": {
+      "monday": {"start": "00:00", "end": "23:59"},
+      "tuesday": {"start": "00:00", "end": "23:59"},
+      "wednesday": {"start": "00:00", "end": "23:59"},
+      "thursday": {"start": "00:00", "end": "23:59"},
+      "friday": {"start": "00:00", "end": "22:00"},
+      "saturday": {"enabled": false},
+      "sunday": {"enabled": false}
+    },
+    "news_filter": {
+      "enabled": true,
+      "high_impact_pause": 30,
+      "medium_impact_pause": 15
+    }
+  },
+  "backtesting": {
+    "enabled": true,
+    "data_source": "mt5",
+    "start_date": "2020-01-01",
+    "end_date": "2024-01-01",
+    "initial_balance": 10000,
+    "commission": 0.0001,
+    "spread": 2.0
+  }
+}
