@@ -1,0 +1,21 @@
+{
+  "forest": {
+    "test_mse": 1.645267009816794e-06,
+    "directional_accuracy": 54.24799081515499,
+    "training_time": 2.9665582180023193
+  },
+  "lstm": {
+    "test_mse": 1.6657963582427145e-06,
+    "directional_accuracy": 59.81630309988519,
+    "training_time": 2.0070178508758545
+  },
+  "ensemble": {
+    "test_mse": 1.5898420401694939e-06,
+    "directional_accuracy": 56.14236509758898,
+    "training_time": 0.0015249252319335938,
+    "weights": [
+      0.5,
+      0.5
+    ]
+  }
+}
