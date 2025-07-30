@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ForexBot AI Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-running {
+            background: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50;
+        }
+
+        .status-stopped {
+            background: #f44336;
+            box-shadow: 0 0 10px #f44336;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .profit {
+            color: #4CAF50;
+        }
+
+        .loss {
+            color: #f44336;
+        }
+
+        .signals-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .signal-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .signal-buy {
+            border-left-color: #4CAF50;
+        }
+
+        .signal-sell {
+            border-left-color: #f44336;
+        }
+
+        .signal-hold {
+            border-left-color: #ff9800;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 ForexBot AI Dashboard</h1>
+            <p>Интегрированная система торгового бота с ИИ</p>
+        </div>
+
+        <div class="dashboard">
+            <!-- Статус бота -->
+            <div class="card">
+                <h3>📊 Статус бота</h3>
+                <div id="bot-status">
+                    <div class="loading">Загрузка статуса...</div>
+                </div>
+                <div class="control-buttons">
+                    <button class="btn btn-success" onclick="controlBot('start')">Запустить</button>
+                    <button class="btn btn-danger" onclick="controlBot('stop')">Остановить</button>
+                    <button class="btn btn-primary" onclick="controlBot('restart')">Перезапустить</button>
+                </div>
+            </div>
+
+            <!-- Информация о счете -->
+            <div class="card">
+                <h3>💰 Информация о счете</h3>
+                <div id="account-info">
+                    <div class="loading">Загрузка данных...</div>
+                </div>
+            </div>
+
+            <!-- Токены -->
+            <div class="card">
+                <h3>🪙 Токены</h3>
+                <div id="token-info">
+                    <div class="loading">Загрузка данных...</div>
+                </div>
+                <div class="control-buttons">
+                    <button class="btn btn-primary" onclick="burnTokens()">Сжечь токены</button>
+                </div>
+            </div>
+
+            <!-- Статистика -->
+            <div class="card">
+                <h3>📈 Статистика</h3>
+                <div id="statistics">
+                    <div class="loading">Загрузка данных...</div>
+                </div>
+            </div>
+
+            <!-- Позиции -->
+            <div class="card">
+                <h3>📋 Открытые позиции</h3>
+                <div id="positions">
+                    <div class="loading">Загрузка данных...</div>
+                </div>
+            </div>
+
+            <!-- Сигналы -->
+            <div class="card">
+                <h3>🎯 Торговые сигналы</h3>
+                <div id="signals">
+                    <div class="loading">Загрузка данных...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API базовый URL
+        const API_BASE = window.location.origin;
+
+        // WebSocket соединение
+        let ws = null;
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeWebSocket();
+            loadAllData();
+            setInterval(loadAllData, 30000); // Обновление каждые 30 секунд
+        });
+
+        // Инициализация WebSocket
+        function initializeWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log('WebSocket соединение установлено');
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'status_update') {
+                        updateBotStatus(data.data);
+                    }
+                } catch (e) {
+                    console.error('Ошибка парсинга WebSocket данных:', e);
+                }
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket соединение закрыто');
+                setTimeout(initializeWebSocket, 5000); // Переподключение через 5 секунд
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket ошибка:', error);
+            };
+        }
+
+        // Загрузка всех данных
+        async function loadAllData() {
+            await Promise.all([
+                loadBotStatus(),
+                loadAccountInfo(),
+                loadTokenInfo(),
+                loadStatistics(),
+                loadPositions(),
+                loadSignals()
+            ]);
+        }
+
+        // Загрузка статуса бота
+        async function loadBotStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+                updateBotStatus(data);
+            } catch (error) {
+                showError('bot-status', 'Ошибка загрузки статуса бота');
+            }
+        }
+
+        // Обновление статуса бота
+        function updateBotStatus(data) {
+            const container = document.getElementById('bot-status');
+            const statusClass = data.is_running ? 'status-running' : 'status-stopped';
+            const statusText = data.is_running ? 'Работает' : 'Остановлен';
+            
+            container.innerHTML = `
+                <div class="metric">
+                    <span class="metric-label">Статус:</span>
+                    <span class="metric-value">
+                        <span class="status-indicator ${statusClass}"></span>
+                        ${statusText}
+                    </span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Открытые позиции:</span>
+                    <span class="metric-value">${data.open_positions}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Баланс:</span>
+                    <span class="metric-value">$${data.balance?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Собственный капитал:</span>
+                    <span class="metric-value">$${data.equity?.toFixed(2) || '0.00'}</span>
+                </div>
+            `;
+        }
+
+        // Загрузка информации о счете
+        async function loadAccountInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/api/account`);
+                const data = await response.json();
+                
+                const container = document.getElementById('account-info');
+                container.innerHTML = `
+                    <div class="metric">
+                        <span class="metric-label">Баланс:</span>
+                        <span class="metric-value">$${data.balance?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Собственный капитал:</span>
+                        <span class="metric-value">$${data.equity?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Маржа:</span>
+                        <span class="metric-value">$${data.margin?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Свободная маржа:</span>
+                        <span class="metric-value">$${data.margin_free?.toFixed(2) || '0.00'}</span>
+                    </div>
+                `;
+            } catch (error) {
+                showError('account-info', 'Ошибка загрузки информации о счете');
+            }
+        }
+
+        // Загрузка информации о токенах
+        async function loadTokenInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/api/token/info`);
+                const data = await response.json();
+                
+                const container = document.getElementById('token-info');
+                container.innerHTML = `
+                    <div class="metric">
+                        <span class="metric-label">Название токена:</span>
+                        <span class="metric-value">${data.token_name}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Символ:</span>
+                        <span class="metric-value">${data.token_symbol}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Баланс токенов:</span>
+                        <span class="metric-value">${data.token_balance?.toFixed(2) || '0.00'}</span>
+                    </div>
+                `;
+            } catch (error) {
+                showError('token-info', 'Ошибка загрузки информации о токенах');
+            }
+        }
+
+        // Загрузка статистики
+        async function loadStatistics() {
+            try {
+                const response = await fetch(`${API_BASE}/api/statistics`);
+                const data = await response.json();
+                const stats = data.statistics || {};
+                
+                const container = document.getElementById('statistics');
+                container.innerHTML = `
+                    <div class="metric">
+                        <span class="metric-label">Всего сделок:</span>
+                        <span class="metric-value">${stats.total_trades || 0}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Прибыльные сделки:</span>
+                        <span class="metric-value profit">${stats.winning_trades || 0}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Убыточные сделки:</span>
+                        <span class="metric-value loss">${stats.losing_trades || 0}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Общая прибыль:</span>
+                        <span class="metric-value ${stats.total_profit >= 0 ? 'profit' : 'loss'}">
+                            $${stats.total_profit?.toFixed(2) || '0.00'}
+                        </span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Текущая просадка:</span>
+                        <span class="metric-value loss">${stats.current_drawdown?.toFixed(2) || '0.00'}%</span>
+                    </div>
+                `;
+            } catch (error) {
+                showError('statistics', 'Ошибка загрузки статистики');
+            }
+        }
+
+        // Загрузка позиций
+        async function loadPositions() {
+            try {
+                const response = await fetch(`${API_BASE}/api/positions`);
+                const data = await response.json();
+                
+                const container = document.getElementById('positions');
+                if (data.positions && data.positions.length > 0) {
+                    const positionsHtml = data.positions.map(pos => `
+                        <div class="signal-item">
+                            <div class="metric">
+                                <span class="metric-label">Символ:</span>
+                                <span class="metric-value">${pos.symbol}</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Тип:</span>
+                                <span class="metric-value">${pos.type}</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Объем:</span>
+                                <span class="metric-value">${pos.volume}</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Прибыль:</span>
+                                <span class="metric-value ${pos.profit >= 0 ? 'profit' : 'loss'}">
+                                    $${pos.profit?.toFixed(2) || '0.00'}
+                                </span>
+                            </div>
+                        </div>
+                    `).join('');
+                    container.innerHTML = positionsHtml;
+                } else {
+                    container.innerHTML = '<div class="loading">Нет открытых позиций</div>';
+                }
+            } catch (error) {
+                showError('positions', 'Ошибка загрузки позиций');
+            }
+        }
+
+        // Загрузка сигналов
+        async function loadSignals() {
+            try {
+                const response = await fetch(`${API_BASE}/api/predictions`);
+                const data = await response.json();
+                
+                const container = document.getElementById('signals');
+                if (data.signals && data.signals.length > 0) {
+                    const signalsHtml = data.signals.map(signal => {
+                        const signalClass = signal.direction.toLowerCase();
+                        return `
+                            <div class="signal-item signal-${signalClass}">
+                                <div class="metric">
+                                    <span class="metric-label">Символ:</span>
+                                    <span class="metric-value">${signal.symbol}</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Направление:</span>
+                                    <span class="metric-value">${signal.direction}</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Уверенность:</span>
+                                    <span class="metric-value">${(signal.confidence * 100).toFixed(1)}%</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Текущая цена:</span>
+                                    <span class="metric-value">${signal.current_price}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    container.innerHTML = signalsHtml;
+                } else {
+                    container.innerHTML = '<div class="loading">Нет активных сигналов</div>';
+                }
+            } catch (error) {
+                showError('signals', 'Ошибка загрузки сигналов');
+            }
+        }
+
+        // Управление ботом
+        async function controlBot(action) {
+            try {
+                const response = await fetch(`${API_BASE}/api/control`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: action })
+                });
+                
+                const data = await response.json();
+                alert(data.message);
+                
+                // Обновляем данные после изменения состояния
+                setTimeout(loadAllData, 1000);
+            } catch (error) {
+                alert('Ошибка управления ботом');
+            }
+        }
+
+        // Сжигание токенов
+        async function burnTokens() {
+            const amount = prompt('Введите количество токенов для сжигания:');
+            if (amount && !isNaN(amount)) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/token/burn`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            amount: parseInt(amount), 
+                            reason: 'Manual burn' 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    alert(data.message);
+                    
+                    // Обновляем данные
+                    setTimeout(loadAllData, 1000);
+                } catch (error) {
+                    alert('Ошибка сжигания токенов');
+                }
+            }
+        }
+
+        // Показать ошибку
+        function showError(containerId, message) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
