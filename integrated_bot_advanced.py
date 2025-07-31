@@ -22,6 +22,9 @@ import numpy as np
 from advanced_ai_models import AdvancedEnsembleModel, create_advanced_models
 from advanced_backtesting import AdvancedBacktester, ModelOptimizer, PerformanceAnalyzer
 
+# Импорт менеджера моделей
+from model_manager import ModelManager, create_model_endpoints
+
 # Pydantic модели для API
 class TradeSignal(BaseModel):
     symbol: str
@@ -51,42 +54,158 @@ class BotStatus(BaseModel):
     last_signal: Optional[TradeSignal] = None
 
 class IntegratedForexBotAdvanced:
-    """Продвинутый интегрированный торговый бот"""
+    """Продвинутый интегрированный торговый бот с AI"""
     
     def __init__(self, config: Dict):
         self.config = config
-        self.status = "stopped"
-        self.start_time = None
-        self.trades = []
-        self.positions = {}
-        self.capital = config.get("initial_capital", 10000)
-        self.initial_capital = self.capital
+        self.app = FastAPI(title="ForexBot AI Advanced", version="2.0.0")
         
-        # AI модели
-        self.ensemble_model = None
-        self.feature_engineer = None
-        self.ai_models_loaded = False
-        
-        # Backtesting и аналитика
+        # Инициализация компонентов
+        self.ensemble_model = create_advanced_models()
         self.backtester = AdvancedBacktester()
         self.performance_analyzer = PerformanceAnalyzer()
         
-        # Торговая конфигурация
-        self.trading_config = TradingConfig()
+        # Инициализация менеджера моделей
+        self.model_manager = ModelManager(config)
         
-        # Статистика
-        self.stats = {
-            "total_trades": 0,
-            "profitable_trades": 0,
-            "total_profit": 0.0,
-            "max_drawdown": 0.0,
-            "win_rate": 0.0,
-            "sharpe_ratio": 0.0
-        }
+        # Состояние бота
+        self.status = "stopped"
+        self.start_time = None
+        self.capital = 10000
+        self.trades = []
+        self.positions = {}
+        self.stats = {}
         
-        # Логирование
-        self.setup_logging()
+        # Настройка API endpoints
+        self._setup_endpoints()
         
+        # Инициализация моделей при запуске
+        self._initialize_models()
+    
+    def _initialize_models(self):
+        """Инициализация AI моделей"""
+        try:
+            symbols = self.config.get('mt5', {}).get('symbols', ['EURUSD'])
+            timeframes = self.config.get('ai', {}).get('timeframes', ['H1'])
+            
+            logger.info("🚀 Инициализация AI моделей...")
+            success = self.model_manager.initialize_models(symbols, timeframes)
+            
+            if success:
+                logger.info("✅ AI модели инициализированы успешно!")
+            else:
+                logger.warning("⚠️ Проблемы с инициализацией некоторых моделей")
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка инициализации моделей: {e}")
+    
+    def _setup_endpoints(self):
+        """Настройка API endpoints"""
+        
+        # Существующие endpoints...
+        
+        # Добавление endpoints для управления моделями
+        create_model_endpoints(self.app, self.model_manager)
+        
+        # Новые endpoints для AI моделей
+        @app.get("/api/ai/models")
+        async def get_ai_models():
+            """Получение информации о AI моделях"""
+            return {
+                "available_models": list(self.ensemble_model.models.keys()),
+                "model_status": self.model_manager.get_models_status(),
+                "feature_engineer": {
+                    "feature_count": len(self.ensemble_model.feature_engineer.feature_names),
+                    "feature_names": self.ensemble_model.feature_engineer.feature_names[:10]  # Первые 10
+                }
+            }
+        
+        @app.post("/api/ai/predict")
+        async def get_ai_prediction(request: Dict):
+            """Получение предсказания от AI моделей"""
+            symbol = request.get('symbol', 'EURUSD')
+            timeframe = request.get('timeframe', 'H1')
+            market_data = request.get('market_data', {})
+            
+            # Преобразование данных в DataFrame
+            df = pd.DataFrame(market_data)
+            
+            if df.empty:
+                return {"error": "No market data provided"}
+            
+            # Получение предсказания
+            prediction = self.model_manager.get_prediction(symbol, timeframe, df)
+            return prediction
+        
+        @app.post("/api/ai/retrain")
+        async def retrain_ai_models(request: Dict):
+            """Переобучение AI моделей"""
+            symbol = request.get('symbol', 'EURUSD')
+            timeframe = request.get('timeframe', 'H1')
+            force = request.get('force', False)
+            
+            results = self.model_manager.retrain_models(symbol, timeframe, force)
+            return results
+        
+        @app.get("/api/ai/performance/{symbol}/{timeframe}")
+        async def get_ai_performance(symbol: str, timeframe: str):
+            """Получение производительности AI моделей"""
+            return self.model_manager.get_model_performance(symbol, timeframe)
+        
+        @app.post("/api/ai/backtest")
+        async def run_ai_backtest(request: Dict):
+            """Запуск backtesting для AI моделей"""
+            symbol = request.get('symbol', 'EURUSD')
+            timeframe = request.get('timeframe', 'H1')
+            start_date = request.get('start_date', '2023-01-01')
+            end_date = request.get('end_date', '2023-12-31')
+            
+            try:
+                # Подготовка данных
+                df, features, target, feature_names = self.model_manager.training_pipeline.prepare_training_data(
+                    symbol, timeframe, start_date, end_date
+                )
+                
+                # Получение предсказаний
+                predictions = self.ensemble_model.predict_ensemble(df)
+                pred_array = predictions['ensemble_prediction']
+                
+                # Запуск backtesting
+                results = self.backtester.run_backtest(df, pred_array)
+                
+                return {
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "period": f"{start_date} - {end_date}",
+                    "backtest_results": results,
+                    "data_info": {
+                        "total_records": len(df),
+                        "features_count": len(feature_names),
+                        "predictions_shape": pred_array.shape
+                    }
+                }
+                
+            except Exception as e:
+                return {"error": str(e)}
+        
+        @app.get("/api/ai/features")
+        async def get_ai_features():
+            """Получение информации о признаках"""
+            return {
+                "feature_names": self.ensemble_model.feature_engineer.feature_names,
+                "feature_count": len(self.ensemble_model.feature_engineer.feature_names),
+                "technical_indicators": [
+                    "sma_20", "sma_50", "sma_200", "ema_12", "ema_26",
+                    "macd", "rsi", "bb_upper", "bb_lower", "stoch_k",
+                    "atr", "volume_sma", "price_momentum", "volatility"
+                ],
+                "advanced_features": [
+                    "fractal_high", "fractal_low", "higher_high", "lower_low",
+                    "price_rsi_divergence", "mtf_trend", "market_regime",
+                    "volatility_regime", "support", "resistance"
+                ]
+            }
+
     def setup_logging(self):
         """Настройка логирования"""
         log_dir = "data/logs"
@@ -481,57 +600,6 @@ async def get_statistics():
     if bot:
         return {"statistics": bot.get_statistics()}
     return {"statistics": {}}
-
-@app.get("/api/ai/models")
-async def get_ai_models():
-    """Получение информации об AI моделях"""
-    if bot and bot.ensemble_model:
-        models_info = {}
-        for name, model in bot.ensemble_model.models.items():
-            models_info[name] = {
-                "type": type(model).__name__,
-                "loaded": True
-            }
-        return {"models": models_info, "ensemble_loaded": bot.ai_models_loaded}
-    return {"models": {}, "ensemble_loaded": False}
-
-@app.post("/api/ai/retrain")
-async def retrain_models():
-    """Переобучение AI моделей"""
-    if bot and bot.ensemble_model:
-        try:
-            # Загрузка новых данных
-            market_data = await bot.load_market_data()
-            
-            # Переобучение моделей
-            bot.ensemble_model.train_models(market_data, market_data['close'])
-            
-            # Сохранение моделей
-            bot.ensemble_model.save_models('models/')
-            
-            return {"success": True, "message": "Модели переобучены и сохранены"}
-        except Exception as e:
-            return {"success": False, "message": f"Ошибка переобучения: {str(e)}"}
-    return {"success": False, "message": "AI модели не инициализированы"}
-
-@app.get("/api/backtest")
-async def run_backtest():
-    """Запуск backtesting"""
-    if bot and bot.ensemble_model:
-        try:
-            # Загрузка данных
-            market_data = await bot.load_market_data()
-            
-            # Получение предсказаний
-            predictions = bot.ensemble_model.predict_ensemble(market_data)
-            
-            # Запуск backtesting
-            results = bot.backtester.run_backtest(market_data, predictions['ensemble'])
-            
-            return {"success": True, "results": results}
-        except Exception as e:
-            return {"success": False, "message": f"Ошибка backtesting: {str(e)}"}
-    return {"success": False, "message": "AI модели не инициализированы"}
 
 # WebSocket для real-time обновлений
 class ConnectionManager:
